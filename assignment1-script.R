@@ -4,7 +4,9 @@ options(scipen=99999)
 #install.packages("ROSE")
 # install.packages("plyr")
 # install.packages("ggplot2")
-install.packages("randomForest") 
+#install.packages("randomForest") 
+#install.packages("caTools")
+library(caTools)
 library(plyr)
 library(ggplot2)
 library(ROSE)
@@ -77,6 +79,16 @@ hist(creditcarddata$V28)
 ## because the amount of fraudulent transactions is equal to 492 
 data_balanced_under <- ovun.sample(Class ~ ., data = creditcarddata, method = "under", N = 1200, seed = 1)$data
 summary(data_balanced_under$Class==1)
+
+# Structure of Class 
+str(data_balanced_under$Class)
+
+# converting class feature(target variable) to factor
+data_balanced_under$Class <- as.factor(data_balanced_under$Class)
+
+# shows that it has been changed to factor
+str(data_balanced_under$Class)
+
 
 ### Split data into training and testing data 
 set.seed(7)
