@@ -12,6 +12,8 @@ library(ggplot2)
 library(ROSE)
 library(randomForest)
 
+library(pROC)
+
 
 # Load data
 creditcarddata <- read.csv(file.choose())
@@ -74,6 +76,8 @@ hist(creditcarddata$V28)
 #Data Preparation
 # possibly standardize time and amount columns?
 
+
+################################ Both Undersampling ##############################
 ## used undersampling technique to solve imbalance problem (TBD)
 ## changed n observations to 2100 
 ## because the amount of fraudulent transactions is equal to 492 
@@ -91,20 +95,22 @@ str(data_balanced_under$Class)
 
 
 ### Split data into training and testing data 
-set.seed(7)
+set.seed(120)
 splitCreditCardData <-sample.split(Y=data_balanced_under$Class, SplitRatio = 0.7)
 trainData <- data_balanced_under[splitCreditCardData,]
 testData <- data_balanced_under[!splitCreditCardData,]
 
+dim(trainData)
+dim(testData)
+
 # Fitting Random Forest to the train dataset
-# set.seed(120)  # Setting seed
-classifier_RF = randomForest(x = trainData[-30],
+classifier_RF = randomForest(x = trainData[-31],
                              y = trainData$Class,
                              ntree = 500)
-classifier_RF
+classifier_RF #error rare: 5.24%
 
 # Predicting the Test set results
-y_pred = predict(classifier_RF, newdata = testData[-30])
+y_pred = predict(classifier_RF, newdata = testData[-31])
 
 # Confusion Matrix
 confusion_mtx = table(testData[, 30], y_pred)
@@ -118,6 +124,58 @@ importance(classifier_RF)
 
 # Variable importance plot
 varImpPlot(classifier_RF)
+
+################################ Oversampling####################
+## Using oversampling as technique
+## use undersampling data on dataset because we want data with the initial observations for minority class
+
+data_balanced_over <- ovun.sample(Class ~ ., data = data_balanced_under, method = "over", N = 28000, seed = 1)$data
+table(data_balanced_over$Class) ## still unbalanced. No need to run a model
+
+
+################################ Both Undersampling and Oversampling####################
+## using both undersampling and oversampling
+data_balanced_both <- ovun.sample(Class ~ ., data = creditcarddata, method = "both", p=0.4, N=28000, seed = 1)$data
+table(data_balanced_both$Class) ## more records of both classes when this is used. Makes case for a more accurate model
+
+# converting class feature(target variable) to factor
+data_balanced_both$Class <- as.factor(data_balanced_both$Class)
+
+splitCreditCardDataBalancedSampling <-sample.split(Y=data_balanced_both$Class, SplitRatio = 0.6)
+trainDataBalancedSampling <- data_balanced_both[splitCreditCardDataBalancedSampling,]
+testDataBalancedSampling <- data_balanced_both[!splitCreditCardDataBalancedSampling,]
+
+
+# Fitting Random Forest to the train Balanced Sampling dataset
+classifier_RF_BalancedSampling = randomForest(x = trainDataBalancedSampling[-31],
+                             y = trainDataBalancedSampling$Class,
+                             ntree = 500)
+classifier_RF_BalancedSampling # error rate: 0.04% 
+
+# Predicting the Test set results
+y_pred_BalancedSampling = predict(classifier_RF_BalancedSampling, newdata = testDataBalancedSampling[-31])
+
+# Confusion Matrix
+confusion_mtx__BalancedSampling = table(testDataBalancedSampling[, 30], y_pred_BalancedSampling)
+confusion_mtx__BalancedSampling
+
+
+# Plotting model
+plot(classifier_RF_BalancedSampling)
+
+
+# Using AOC (Area Under Curve)
+## undersampling
+underSamplingRoc <- roc(as.numeric(testData$Class), y_pred, plot = TRUE, col = "blue")
+underSamplingRoc # roc
+auc(underSamplingRoc) # auc
+
+## both under and over sampling
+underBothSamplingRoc <- roc(as.numeric(testDataBalancedSampling$Class), as.numeric(y_pred_BalancedSampling), plot = TRUE, col = "blue")
+underBothSamplingRoc # roc
+auc(underBothSamplingRoc) # auc
+
+
 
 
 
