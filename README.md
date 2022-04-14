@@ -1,5 +1,9 @@
 ## COMP6115-ml-prediction
 Supervised Machine Learning classification.
+# Using:
+* Randowm Forest 
+* logistic Regression
+* Decision Tree
 
 
 ## About Dataset 
