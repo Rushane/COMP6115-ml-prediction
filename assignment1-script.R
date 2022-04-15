@@ -40,13 +40,13 @@ head(creditcarddata)
 str(creditcarddata)
 nrow(creditcarddata)
 summary(creditcarddata)# summary of credit card data
-View(creditcarddata$Class) # should this be converted to other type of column
+View(creditcarddata$Class) 
 
 apply(creditcarddata,2, function(p) sum(is.na(p))) # get na by column
 apply(creditcarddata,2, function(p) sum(p == "")) # get number of missing values by column
 
-hist(creditcarddata$Time) # use a distribution plot instead
-## hist(creditcarddata$Amount)
+hist(creditcarddata$Time)
+hist(creditcarddata$Amount)
 
 ## checking fraud vs non fraud transactions
 # 1 for fraudulent transactions, 0 non-fraudulent
@@ -95,7 +95,6 @@ hist(creditcarddata$V27)
 hist(creditcarddata$V28)
 
 #Data Preparation
-# possibly standardize time and amount columns?
 
 #Normalizing Amount column 
 #normalization function 
@@ -106,7 +105,7 @@ creditcarddata$Amount <- normalize(creditcarddata$Amount)
 
 ################################ Both Undersampling ##############################
 ## used undersampling technique to solve imbalance problem (TBD)
-## changed n observations to 2100 
+## changed n observations to 1200
 ## because the amount of fraudulent transactions is equal to 492 
 data_balanced_under <- ovun.sample(Class ~ ., data = creditcarddata, method = "under", N = 1200, seed = 1)$data
 summary(data_balanced_under$Class==1)
@@ -131,17 +130,30 @@ dim(trainData)
 dim(testData)
 
 # Fitting Random Forest to the train dataset
+set.seed(120)
 classifier_RF = randomForest(x = trainData[-31],
                              y = trainData$Class,
                              ntree = 500)
-classifier_RF #error rare: 5.24%
+classifier_RF 
 
 # Predicting the Test set results
 y_pred = predict(classifier_RF, newdata = testData[-31])
 
 # Confusion Matrix
-confusion_mtx = table(testData[, 30], y_pred)
+confusion_mtx = table(testData[, 31], y_pred)
 confusion_mtx
+
+# Specificity
+specificity_undersampling <- confusion_mtx[1,1]/sum(confusion_mtx[1,])
+specificity_undersampling
+
+# Sensivity 
+sensivity_undersampling <- confusion_mtx[2,2]/sum(confusion_mtx[2,])
+sensivity_undersampling
+
+# accuracy of under sampling RF (Random Forest)
+undersampling_accuracy <- sum(diag(confusion_mtx))/sum(confusion_mtx)
+undersampling_accuracy 
 
 # Plotting model
 plot(classifier_RF)
@@ -155,6 +167,12 @@ varImpPlot(classifier_RF)
 ################################ Oversampling####################
 ## Using oversampling as technique
 ## use undersampling data on dataset because we want data with the initial observations for minority class
+
+data_balanced_over <- ovun.sample(Class ~ ., data = data_balanced_under, method = "over", N = 5000, seed = 1)$data
+table(data_balanced_over$Class) ## still unbalanced. No need to run a model
+
+data_balanced_over <- ovun.sample(Class ~ ., data = data_balanced_under, method = "over", N = 10000, seed = 1)$data
+table(data_balanced_over$Class) ## still unbalanced. No need to run a model
 
 data_balanced_over <- ovun.sample(Class ~ ., data = data_balanced_under, method = "over", N = 28000, seed = 1)$data
 table(data_balanced_over$Class) ## still unbalanced. No need to run a model
@@ -174,18 +192,31 @@ testDataBalancedSampling <- data_balanced_both[!splitCreditCardDataBalancedSampl
 
 
 # Fitting Random Forest to the train Balanced Sampling dataset
+set.seed(120)
 classifier_RF_BalancedSampling = randomForest(x = trainDataBalancedSampling[-31],
                                               y = trainDataBalancedSampling$Class,
                                               ntree = 500)
-classifier_RF_BalancedSampling # error rate: 0.04% 
+classifier_RF_BalancedSampling   
 
 # Predicting the Test set results
 y_pred_BalancedSampling = predict(classifier_RF_BalancedSampling, newdata = testDataBalancedSampling[-31])
 
 # Confusion Matrix
-confusion_mtx__BalancedSampling = table(testDataBalancedSampling[, 30], y_pred_BalancedSampling)
+confusion_mtx__BalancedSampling = table(testDataBalancedSampling[, 31], y_pred_BalancedSampling)
 confusion_mtx__BalancedSampling
 
+#accuracy of model
+# accuracy of under sampling RF (Random Forest)
+both_sampling_accuracy <- sum(diag(confusion_mtx__BalancedSampling))/sum(confusion_mtx__BalancedSampling)
+both_sampling_accuracy # 99%
+
+# Specificity
+specificity_bothsampling <- confusion_mtx__BalancedSampling[1,1]/sum(confusion_mtx__BalancedSampling[1,])
+specificity_bothsampling
+
+# Sensivity 
+sensivity_bothsampling <- confusion_mtx__BalancedSampling[2,2]/sum(confusion_mtx__BalancedSampling[2,])
+sensivity_bothsampling
 
 # Plotting model
 plot(classifier_RF_BalancedSampling)
@@ -193,7 +224,7 @@ plot(classifier_RF_BalancedSampling)
 
 # Using AOC (Area Under Curve)
 ## undersampling
-underSamplingRoc <- roc(as.numeric(testData$Class), y_pred, plot = TRUE, col = "blue")
+underSamplingRoc <- roc(as.numeric(testData$Class), as.numeric(y_pred), plot = TRUE, col = "blue")
 underSamplingRoc # roc
 auc(underSamplingRoc) # auc
 
